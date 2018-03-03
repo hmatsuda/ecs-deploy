@@ -12,6 +12,7 @@ MAX=false
 TIMEOUT=90
 VERBOSE=false
 TAGVAR=false
+FORCE_NEW_DEPLOYMENT=""
 TAGONLY=""
 ENABLE_ROLLBACK=false
 AWS_CLI=$(which aws)
@@ -40,16 +41,17 @@ Required arguments:
     --aws-instance-profile  Use the IAM role associated with this instance
 
 Optional arguments:
-    -D | --desired-count    The number of instantiations of the task to place and keep running in your service.
-    -m | --min              minumumHealthyPercent: The lower limit on the number of running tasks during a deployment.
-    -M | --max              maximumPercent: The upper limit on the number of running tasks during a deployment.
-    -t | --timeout          Default is 90s. Script monitors ECS Service for new task definition to be running.
-    -e | --tag-env-var      Get image tag name from environment variable. If provided this will override value specified in image name argument.
-    -to | --tag-only        New tag to apply to all images defined in the task (multi-container task). If provided this will override value specified in image name argument.
-    --max-definitions       Number of Task Definition Revisions to persist before deregistering oldest revisions.
-    --enable-rollback       Rollback task definition if new version is not running before TIMEOUT
-    -v | --verbose          Verbose output
-         --version          Display the version
+    -D | --desired-count         The number of instantiations of the task to place and keep running in your service.
+    -m | --min                   minumumHealthyPercent: The lower limit on the number of running tasks during a deployment.
+    -M | --max                   maximumPercent: The upper limit on the number of running tasks during a deployment.
+    -t | --timeout               Default is 90s. Script monitors ECS Service for new task definition to be running.
+    -e | --tag-env-var           Get image tag name from environment variable. If provided this will override value specified in image name argument.
+    -f | --force-new-deployment  Force a new deployment of the service. (default: false)
+    -to | --tag-only             New tag to apply to all images defined in the task (multi-container task). If provided this will override value specified in image name argument.
+    --max-definitions            Number of Task Definition Revisions to persist before deregistering oldest revisions.
+    --enable-rollback            Rollback task definition if new version is not running before TIMEOUT
+    -v | --verbose               Verbose output
+         --version               Display the version
 
 Requirements:
     aws:  AWS Command Line Interface
@@ -313,7 +315,7 @@ function updateService() {
     fi
 
     # Update the service
-    UPDATE=`$AWS_ECS update-service --cluster $CLUSTER --service $SERVICE $DESIRED_COUNT --task-definition $NEW_TASKDEF $DEPLOYMENT_CONFIG`
+    UPDATE=`$AWS_ECS update-service --cluster $CLUSTER --service $SERVICE $DESIRED_COUNT $FORCE_NEW_DEPLOYMENT --task-definition $NEW_TASKDEF $DEPLOYMENT_CONFIG`
 
     # Only excepts RUNNING state from services whose desired-count > 0
     SERVICE_DESIREDCOUNT=`$AWS_ECS describe-services --cluster $CLUSTER --service $SERVICE | jq '.services[]|.desiredCount'`
@@ -482,6 +484,10 @@ if [ "$BASH_SOURCE" == "$0" ]; then
                 ;;
             -e|--tag-env-var)
                 TAGVAR="$2"
+                shift
+                ;;
+            -f|--force-new-deployment)
+                FORCE_NEW_DEPLOYMENT="--force-new-deployment"
                 shift
                 ;;
             -to|--tag-only)
